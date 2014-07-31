@@ -209,7 +209,7 @@ class ElementsLayout(Layout):
 			self.last_draw_time[element.id()] = None
 			self.draw_count[element.id()] = 0
 			self.max_id_len = max(self.max_id_len, len(element.id()))
-			trigger_indices = self.ui.engine.get_element_state(element).get_element().positions().get_trigger_indices()
+			trigger_indices = self.ui.engine.get_element_state(element).get_element().positions().get_trigger_indices(mode=self.ui.engine.options.mode)
 			for trigger_index in trigger_indices:
 				if trigger_index not in self.trigger_map.keys(): self.trigger_map[trigger_index] = []
 				self.trigger_map[trigger_index] += [element]
@@ -220,7 +220,7 @@ class ElementsLayout(Layout):
 		for element in self.elements:
 			self.y_offset_map[element.id()] = y+cnt
 			
-			self.ui.engine.track(element.positions().get_trigger_indices(), self)
+			self.ui.engine.track(element.positions().get_trigger_indices(mode=self.ui.engine.options.mode), self)
 			
 			scr.move(self.y_offset_map[element.id()], 1)
 			scr.addstr(element.id())
@@ -232,7 +232,7 @@ class ElementsLayout(Layout):
 		Layout.activate(self, y)
 	def deactivate(self):
 		for element in self.elements:
-			self.ui.engine.untrack(element.positions().get_trigger_indices(), self)
+			self.ui.engine.untrack(element.positions().get_trigger_indices(mode=self.ui.engine.options.mode), self)
 		
 		Layout.deactivate(self)
 	def __call__(self, *args, **kwds):
@@ -310,7 +310,7 @@ class HistoryLayout(Layout):
 			element, history_length = spec
 			self.history_lengths[element] = history_length
 			self.history_map[element] = []
-			trigger_indices = self.ui.engine.get_element_state(element).get_element().positions().get_trigger_indices()
+			trigger_indices = self.ui.engine.get_element_state(element).get_element().positions().get_trigger_indices(mode=self.ui.engine.options.mode)
 			self.ui.engine.track(trigger_indices, self)
 			for trigger_index in trigger_indices:
 				if trigger_index not in self.trigger_map.keys(): self.trigger_map[trigger_index] = []

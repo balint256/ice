@@ -26,7 +26,7 @@ import sys, socket, traceback, os, sys, datetime, time
 
 from optparse import OptionParser
 
-import ui, net, state, res, server
+import ui, net, state, res, server, utils, input
 from constants import *
 from primitives import *
 
@@ -68,11 +68,11 @@ class ByteDeframer(Deframer):
 		return state.STATE_WAITING_FOR_SYNC
 	def process(self, buffers, accept_fn=None):
 		for buf in buffers:
-			if buf.get_flags() & net.NetworkBuffer.FLAG_DROP:
+			if buf.get_flags() & net.Buffer.FLAG_DROP:
 				self.synced = False
 			
 			resync = False
-			if buf.get_flags() & net.NetworkBuffer.FLAG_FIRST:
+			if buf.get_flags() & net.Buffer.FLAG_FIRST:
 				resync = True
 			
 			data = map(ord, buf.get_buffer())	# Each buffer should be a complete frame
@@ -119,7 +119,7 @@ class SymbolDeframer(Deframer):
 		return state.STATE_WAITING_FOR_SYNC
 	def process(self, buffers, accept_fn=None):
 		for buf in buffers:
-			if buf.get_flags() & net.NetworkBuffer.FLAG_DROP:
+			if buf.get_flags() & net.Buffer.FLAG_DROP:
 				self.synced = False
 				self.skip = 0
 			
@@ -281,7 +281,10 @@ class Engine(state.EventDispatcher, state.Tracker):
 		self.subcom_trackers = {}
 		self.trackers = {MINOR_FRAME_KEY: self.frame_tracker}
 		
-		if options.network_address:
+		if options.input:
+			self.deframer = ByteDeframer(MINOR_FRAME_LEN)
+			self.net = input.FileInput()
+		elif options.network_address:
 			self.deframer = ByteDeframer(MINOR_FRAME_LEN)
 			self.net = net.TCPNetwork()
 		else:
@@ -289,7 +292,10 @@ class Engine(state.EventDispatcher, state.Tracker):
 			self.net = net.UDPNetwork()
 		
 		self.server = server.Server(self, self.element_manager, self.element_state_manager, global_log)
-		self.ui = ui.UserInterface(self)
+		if options.headless:
+			self.ui = None
+		else:
+			self.ui = ui.UserInterface(self)
 	def get_element(self, name, safe=True):
 		return self.element_manager.get_element(name, safe)
 	def get_element_state(self, element):
@@ -324,6 +330,8 @@ class Engine(state.EventDispatcher, state.Tracker):
 		res.load_curves(self.options.load_path, verbose)
 		self.element_manager.load_elements(self.options.load_path, verbose)
 		
+		# FIXME: If an element doesn't get tracked due to a certain mode where it'll never appear, mark is as such and have UI not display it
+		
 		for k in self.element_manager.get_element_ids():
 			element_state = self.get_element_state(k)	# Create element state
 			
@@ -333,10 +341,17 @@ class Engine(state.EventDispatcher, state.Tracker):
 			
 			positions = element_state.get_element().positions()
 			if positions.is_compatible_tracker(self.frame_tracker):
-				self.frame_tracker.track(positions.get_trigger_indices(), element_state)
+				try:
+					self.frame_tracker.track(positions.get_trigger_indices(mode=self.options.mode), element_state)
+				except:
+					print "Exception during tracking of '%s': %s" % (element_state.get_element().id(), positions.get_trigger_indices(mode=self.options.mode))
+					raise
 		
-		for subcom_key in EMF_SUBCOM_LIST:
-			subcom_tracker = state.SubcomTracker(subcom_key, EMF_SUBCOM_LEN, EMF_COLS[subcom_key], NUM_MINOR_FRAMES)
+		current_mode_col_map = MODE_MAP[self.options.mode]
+		
+		for subcom_key in current_mode_col_map.keys():
+			subcom_length, subcom_cols = current_mode_col_map[subcom_key]
+			subcom_tracker = state.SubcomTracker(subcom_key, subcom_length, subcom_cols, NUM_MINOR_FRAMES)
 			self.frame_tracker.track(subcom_tracker.get_trigger_indices(), subcom_tracker.update)
 			self.subcom_trackers[subcom_key] = subcom_tracker
 			self.trackers[subcom_key] = subcom_tracker
@@ -345,7 +360,15 @@ class Engine(state.EventDispatcher, state.Tracker):
 				element_state = self.get_element_state(k)
 				positions = element_state.get_element().positions()
 				if positions.is_compatible_tracker(subcom_tracker):
-					subcom_tracker.track(positions.get_trigger_indices(), element_state)
+					try:
+						subcom_tracker.track(positions.get_trigger_indices(mode=self.options.mode), element_state)
+					except:
+						print "Exception during subcom '%s' tracking of '%s': %s" % (subcom_key, element_state.get_element().id(), positions.get_trigger_indices(mode=self.options.mode))
+						raise
+		
+		self.net.start(address=self.options.network_address, port=self.options.port, file_path=self.options.input)
+		
+		self.server.start(port=self.options.server_port)
 		
 		global _layouts
 		if _layouts is None:
@@ -355,15 +378,14 @@ class Engine(state.EventDispatcher, state.Tracker):
 				module_shortcut = module[0]#.lower()
 				_layouts += [(module, element_names, module_shortcut)]
 		
-		self.net.start(address=self.options.network_address, port=self.options.port)
+		if self.ui:
+			print "Starting UI..."
+			
+			self.ui.start(_layouts)
+			
+			global global_log_fn
+			global_log_fn = self.ui.log
 		
-		self.server.start(port=self.options.server_port)
-		
-		print "Starting UI..."
-		self.ui.start(_layouts)
-		
-		global global_log_fn
-		global_log_fn = self.ui.log
 		global_log("Running")
 	def run(self):
 		while True:
@@ -372,15 +394,18 @@ class Engine(state.EventDispatcher, state.Tracker):
 			self.net.run()	# Currently doesn't actually do anything (background thread does)
 			
 			data = self.net.get_data()
+			if data is None:	# EOF
+				break
 			
 			# This try/except block can be disabled for proper debugging
 			# It's mainly here as a workaround for windows that are too small and causes curses to throw an exception as the UI assumes the window is larger enough
 			#try:
 			if True:
 				self.deframer.process(data, self.accept_byte)
-			
-				if not self.ui.run():
-					break
+				
+				if self.ui:
+					if not self.ui.run():
+						break
 			#except Exception, e:
 			#	global_log(str(e))
 			
@@ -396,7 +421,7 @@ class Engine(state.EventDispatcher, state.Tracker):
 	def get_state(self):
 		return self.deframer.get_state()
 	def stop(self):
-		self.ui.stop()
+		if self.ui: self.ui.stop()
 		#print "UI shutdown"
 		
 		if self.server.exception:
@@ -422,8 +447,21 @@ def main():
 	parser.add_option("-P", "--server-port", type="int", default='21012', help="server port [default=%default]")
 	parser.add_option("-S", "--always-sleep", action="store_true", default=False, help="always sleep in inner loop [default=%default]")
 	parser.add_option("-v", "--verbose", action="store_true", default=False, help="verbose logging outside of UI [default=%default]")
+	parser.add_option("-m", "--mode", type="string", default="engineering", help="select telemetry mode (%s) [default=%%default]" % (",".join(MODE_MAP.keys())))
+	parser.add_option("-H", "--headless", action="store_true", default=False, help="do not run the UI [default=%default]")
+	parser.add_option("-i", "--input", type="string", default=None, help="input file (instead of network) [default=%default]")
 	
 	(options, args) = parser.parse_args()
+	
+	matching_modes = []
+	for mode in MODE_MAP.keys():
+		idx = mode.lower().find(options.mode.lower())
+		if idx == 0: matching_modes += [mode]
+	if len(matching_modes) != 1:
+		print "Invalid mode:", options.mode
+		return
+	options.mode = matching_modes[0]
+	print "Mode:", options.mode
 	
 	options.network_address = None
 	

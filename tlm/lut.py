@@ -43,9 +43,9 @@ def parse_lut_text(lut):
 #EMF_AS1_LUT	= parse_emf_lut(res.EMF_AS1_LUT_TXT)
 #EMF_AS2_LUT	= parse_emf_lut(res.EMF_AS2_LUT_TXT)
 
-get_ds_lut	= lambda x: gen_subcom_lut(len(EMF_COLS[DIGITAL_SUBCOM]),  EMF_SUBCOM_LEN, x, EMF_COLS[DIGITAL_SUBCOM])
-get_as1_lut	= lambda x: gen_subcom_lut(len(EMF_COLS[ANALOG_SUBCOM_1]), EMF_SUBCOM_LEN, x, EMF_COLS[ANALOG_SUBCOM_1])
-get_as2_lut	= lambda x: gen_subcom_lut(len(EMF_COLS[ANALOG_SUBCOM_2]), EMF_SUBCOM_LEN, x, EMF_COLS[ANALOG_SUBCOM_2])
+get_ds_lut	= lambda y, x: gen_subcom_lut(len(y[DIGITAL_SUBCOM][1]),  EMF_SUBCOM_LEN, x, y[DIGITAL_SUBCOM][1])
+get_as1_lut	= lambda y, x: gen_subcom_lut(len(y[ANALOG_SUBCOM_1][1]), EMF_SUBCOM_LEN, x, y[ANALOG_SUBCOM_1][1])
+get_as2_lut	= lambda y, x: gen_subcom_lut(len(y[ANALOG_SUBCOM_2][1]), EMF_SUBCOM_LEN, x, y[ANALOG_SUBCOM_2][1])
 
 # FIXME: Supposed to be a helper for Element definitions
 def gen_element_lut_with_subcom_lut(lut, offsets):

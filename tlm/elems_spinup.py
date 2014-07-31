@@ -87,11 +87,11 @@ _tlm_elements = [
 	Element('cmd_ctr_b',             positions=SubcomByteOffset(DIGITAL_SUBCOM, [20, 52])),
 	Element('cmd_ctr_a',             positions=SubcomByteOffset(DIGITAL_SUBCOM, [21, 53])),
 	
-	Element('non_ess_current',       positions=lut.combine_lut_dicts(lut.gen_lut_dict(85,  NUM_MINOR_FRAMES), lut.get_as2_lut(44)), formatter=CurveFormatterValidator(curve=res.get_curve(32)), unit='A'),
-	Element('28v_bus',               positions=lut.combine_lut_dicts(lut.gen_lut_dict(86,  NUM_MINOR_FRAMES), lut.get_as2_lut(43)), formatter=CurveFormatterValidator(curve=res.get_curve(41)), unit='V'),
-	Element('ess_current',           positions=lut.combine_lut_dicts(lut.gen_lut_dict(87,  NUM_MINOR_FRAMES), lut.get_as2_lut(45)), formatter=CurveFormatterValidator(curve=res.get_curve(31)), unit='A'),
-	Element('sa_current',            positions=lut.combine_lut_dicts(lut.gen_lut_dict(101, NUM_MINOR_FRAMES), lut.get_as2_lut(46)), formatter=CurveFormatterValidator(curve=res.get_curve(33)), unit='A'),
-	Element('shunt_dump_current',    positions=lut.get_as2_lut(47),                                                                 formatter=CurveFormatterValidator(curve=res.get_curve(32)), unit='A'),
+	Element('non_ess_current',       positions=ModeFilteredByteOffset({MODE_ENG: lut.combine_lut_dicts(lut.gen_lut_dict(85,  NUM_MINOR_FRAMES), lut.get_as2_lut(EMF_COLS, 44)), MODE_SCI: lut.get_as2_lut(SCI_COLS, 44)}), formatter=CurveFormatterValidator(curve=res.get_curve(32)), unit='A'),
+	Element('28v_bus',               positions=ModeFilteredByteOffset({MODE_ENG: lut.combine_lut_dicts(lut.gen_lut_dict(86,  NUM_MINOR_FRAMES), lut.get_as2_lut(EMF_COLS, 43)), MODE_SCI: lut.get_as2_lut(SCI_COLS, 43)}), formatter=CurveFormatterValidator(curve=res.get_curve(41)), unit='V'),
+	Element('ess_current',           positions=ModeFilteredByteOffset({MODE_ENG: lut.combine_lut_dicts(lut.gen_lut_dict(87,  NUM_MINOR_FRAMES), lut.get_as2_lut(EMF_COLS, 45)), MODE_SCI: lut.get_as2_lut(SCI_COLS, 45)}), formatter=CurveFormatterValidator(curve=res.get_curve(31)), unit='A'),
+	Element('sa_current',            positions=ModeFilteredByteOffset({MODE_ENG: lut.combine_lut_dicts(lut.gen_lut_dict(101, NUM_MINOR_FRAMES), lut.get_as2_lut(EMF_COLS, 46)), MODE_SCI: lut.get_as2_lut(SCI_COLS, 46)}), formatter=CurveFormatterValidator(curve=res.get_curve(33)), unit='A'),
+	Element('shunt_dump_current',    positions=SubcomByteOffset(ANALOG_SUBCOM_2, [47]),                                                                 formatter=CurveFormatterValidator(curve=res.get_curve(32)), unit='A'),
 	
 	Element('hps_1_thruster_select', positions=SubcomBitOffset(DIGITAL_SUBCOM, [utils.num_range(80,91)]), formatter=BinaryFormatter(fill=12)),
 	Element('hps_1_sector_initiate', positions=SubcomBitOffset(DIGITAL_SUBCOM, [utils.num_range(92,101)])),
@@ -123,13 +123,13 @@ _tlm_elements = [
 	Element('hps_1_2_prm_ln_htrs',   positions=SubcomBitOffset(DIGITAL_SUBCOM, [[436,444]]), formatter=OptionFormatter(four_level_text)),
 	Element('hps_1_2_sec_ln_htrs',   positions=SubcomBitOffset(DIGITAL_SUBCOM, [[437,445]]), formatter=OptionFormatter(four_level_text)),
 	
-	Element('accel_pwr_monitor',     positions=lut.get_as2_lut(3)),
+	Element('accel_pwr_monitor',     positions=SubcomByteOffset(ANALOG_SUBCOM_2, [3])),
 	#Element('hps_1_tcX',              positions=lut.get_as2_lut(4), formatter=CurveFormatterValidator(curve=res.get_curve(63)), unit='C'),
 	Element('hps_1_tc',              positions=SubcomByteOffset(ANALOG_SUBCOM_2, [4]), formatter=CurveFormatterValidator(curve=res.get_curve(63)), unit='C'),
 	#Element('hps_2_tcX',              positions=lut.get_as2_lut(5), formatter=CurveFormatterValidator(curve=res.get_curve(64)), unit='C'),
 	Element('hps_2_tc',              positions=SubcomByteOffset(ANALOG_SUBCOM_2, [5]), formatter=CurveFormatterValidator(curve=res.get_curve(64)), unit='C'),
-	Element('hps_1_temp_supercom',   positions=lut.get_as2_lut(39), parser=TemperatureSupercomParser(), formatter=CurveFormatterValidator(curve=res.get_curve(45)), unit='C'), # note: this cycles through multiple temperature readings, but sync not as expected)
-	Element('hps_2_temp_supercom',   positions=lut.get_as2_lut(40), parser=TemperatureSupercomParser(), formatter=CurveFormatterValidator(curve=res.get_curve(45)), unit='C'), # note: this cycles through multiple temperature readings, but sync not as expected)
+	Element('hps_1_temp_supercom',   positions=SubcomByteOffset(ANALOG_SUBCOM_2, [39]), parser=TemperatureSupercomParser(), formatter=CurveFormatterValidator(curve=res.get_curve(45)), unit='C'), # note: this cycles through multiple temperature readings, but sync not as expected)
+	Element('hps_2_temp_supercom',   positions=SubcomByteOffset(ANALOG_SUBCOM_2, [40]), parser=TemperatureSupercomParser(), formatter=CurveFormatterValidator(curve=res.get_curve(45)), unit='C'), # note: this cycles through multiple temperature readings, but sync not as expected)
 	
 	Element('spin_rate',             positions=SubcomByteOffset(DIGITAL_SUBCOM, [utils.num_range(34,35)]), parser=ExternalFunctionParser(spin_rate.spinrate)),
 	Element('spin_period',           positions=SubcomByteOffset(DIGITAL_SUBCOM, [utils.num_range(34,35)]), parser=ExternalFunctionParser(spin_rate.spinperiod)),
@@ -142,8 +142,8 @@ _tlm_elements = [
 	Element('fss_angle_a',           positions=SubcomByteOffset(ANALOG_SUBCOM_1, [utils.num_range(54,58)]), parser=FSSAParser(fss_angle.fssangle)),  # HACK
 	Element('fss_angle_b',           positions=SubcomByteOffset(ANALOG_SUBCOM_2, [utils.num_range(59,63)+[8]]), parser=ExternalFunctionParser(fss_angle.fssangle)),
 	
-	Element('hps_1_tk_press',        positions=lut.get_as2_lut(14), formatter=CurveFormatterValidator(curve=res.get_curve(65)), unit='psi'),
-	Element('hps_2_tk_press',        positions=lut.get_as2_lut(15), formatter=CurveFormatterValidator(curve=res.get_curve(65)), unit='psi'),
+	Element('hps_1_tk_press',        positions=SubcomByteOffset(ANALOG_SUBCOM_2, [14]), formatter=CurveFormatterValidator(curve=res.get_curve(65)), unit='psi'),
+	Element('hps_2_tk_press',        positions=SubcomByteOffset(ANALOG_SUBCOM_2, [15]), formatter=CurveFormatterValidator(curve=res.get_curve(65)), unit='psi'),
 	
 	Element('hps_1_lv_a',            positions=[61], parser=FixedWordParser(2, 2)),
 	Element('hps_2_lv_b',            positions=[61], parser=FixedWordParser(2, 3)),

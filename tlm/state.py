@@ -66,7 +66,7 @@ class ElementState():
 			
 			local_time_now = self.manager.engine.get_local_time_now()
 			
-			raw_data = self.element.positions().collect(trigger=trigger, state=self, *args, **kwds)
+			raw_data = self.element.positions().collect(trigger=trigger, state=self, mode=self.engine.options.mode, *args, **kwds)
 			
 			(res, val) = self.element.parser().parse(raw_data, element=self.element, state=self, *args, **kwds)
 			if res == False:
@@ -193,7 +193,7 @@ class SubcomTracker(Tracker, EventDispatcher):	# FIXME: , CustomOffset
 	def get_subcom_key(self): return self.key
 	def can_handle_subcom(self, key):
 		return (self.get_subcom_key() == key)
-	def get_trigger_indices(self): return self.trigger_indices
+	def get_trigger_indices(self): return self.trigger_indices	# FIXME: , *args, **kwds (for CustomOffset)
 	def update(self, byte, frame, minor_frame_idx, idx, trigger, *args, **kwds):
 		minor_frame_offset_index = self.offsets.index(idx)
 		subcom_offset_list = self.offset_map[minor_frame_idx]
@@ -232,7 +232,7 @@ class SubcomTracker(Tracker, EventDispatcher):	# FIXME: , CustomOffset
 			self.subcom_frame = []
 	def track(self, indices, target):
 		for index in indices:
-			assert(index.name in EMF_SUBCOM_LIST)
+			#assert(index.name in ALL_SUBCOM_LIST)	# FIXME
 			index, = index.indices
 			if index < 0 or index >= self.length:
 				raise Exception("Unable to track index %d outside of SubcomTracker length %d" % (index, self.length))
@@ -243,7 +243,7 @@ class SubcomTracker(Tracker, EventDispatcher):	# FIXME: , CustomOffset
 		#return indices
 	def untrack(self, indices, target):
 		for index in indices:
-			assert(index.name in EMF_SUBCOM_LIST)
+			#assert(index.name in ALL_SUBCOM_LIST)	# FIXME
 			index, = index.indices
 			if index not in self.update_map.keys():
 				continue

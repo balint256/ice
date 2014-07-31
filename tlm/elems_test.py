@@ -36,10 +36,10 @@ lock_option_text = ['unlocked', 'locked']
 _tlm_elements = [
 	Element('FRMCNT', name='Frame counter', desc='Index of minor frame', positions=[60]),
 	
-	Element('CMDCNT1',  positions=lut.get_ds_lut([20, 52])),
+	Element('CMDCNT1',  positions=ModeFilteredByteOffset({MODE_ENG: lut.get_ds_lut(EMF_COLS, [20, 52]), MODE_SCI: lut.get_ds_lut(SCI_COLS, [20, 52])})),
 	Element('CMDCNT1x', positions=SubcomByteOffset(DIGITAL_SUBCOM, [20, 52])),
 	
-	Element('CMDCNT2', positions=lut.get_ds_lut([21, 53])),
+	Element('CMDCNT2',  positions=ModeFilteredByteOffset({MODE_ENG: lut.get_ds_lut(EMF_COLS, [21, 53]), MODE_SCI: lut.get_ds_lut(SCI_COLS, [21, 53])})),
 	Element('CMDCNT2x', positions=SubcomByteOffset(DIGITAL_SUBCOM, [21, 53])),
 	
 	Element('CMDCNT2b', positions=SubcomBitOffset(DIGITAL_SUBCOM, [utils.num_range(21*8,21*8+7), utils.num_range(53*8,53*8+7)])),
@@ -65,10 +65,10 @@ _tlm_elements = [
     Element('xpdr_a_lock',            positions=[62], parser=FixedWordParser(2, 4), formatter=OptionFormatter(lock_option_text)),	# Docs are wrong, this is correct
 	Element('xpdr_b_lock',            positions=[62], parser=FixedWordParser(2, 5), formatter=OptionFormatter(lock_option_text)),	# Docs are wrong, this is correct
 	
-	Element('xpdr_a_signal_str',      positions=lut.get_as2_lut(58), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='dBm'),
-	Element('xpdr_b_signal_str',      positions=lut.get_as2_lut(49), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='dBm'),
-	Element('xpdr_a_static_phase_err',positions=lut.get_as2_lut(50), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='kHz'),
-	Element('xpdr_b_static_phase_err',positions=lut.get_as2_lut(51), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='kHz'),
+	Element('xpdr_a_signal_str',      positions=SubcomByteOffset(ANALOG_SUBCOM_2, [58]), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='dBm'),
+	Element('xpdr_b_signal_str',      positions=SubcomByteOffset(ANALOG_SUBCOM_2, [49]), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='dBm'),
+	Element('xpdr_a_static_phase_err',positions=SubcomByteOffset(ANALOG_SUBCOM_2, [50]), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='kHz'),
+	Element('xpdr_b_static_phase_err',positions=SubcomByteOffset(ANALOG_SUBCOM_2, [51]), formatter=CurveFormatterValidator(curve=res.get_curve(36)), unit='kHz'),
 ]
 
 def get_elements():

@@ -168,8 +168,10 @@ class CustomOffset():
 	#def get_compatible_trackers(self): return self.compatible_trackers
 	def is_compatible_tracker(self, c):
 		return issubclass(c.__class__, tuple(self.compatible_trackers))
-	def get_trigger_indices(self):
+	def get_trigger_indices(self, *args, **kwds):
 		raise Exception("Implement CustomOffset get_trigger_offsets")
+	def collect(self, *args, **kwds):
+		raise Exception("Implement CustomOffset collect")
 
 class ByteOffsetPrototype(CustomOffset):
 	def __init__(self, offsets, byte_offsets=None, lut=None, auto_complete=True, *args, **kwds):
@@ -262,7 +264,7 @@ class ByteOffsetPrototype(CustomOffset):
 		
 		else:
 			raise Exception("Cannot build trigger map with byte offset type: '%s'" % (type(self.byte_offsets)))
-	def get_trigger_indices(self):
+	def get_trigger_indices(self, *args, **kwds):
 		return self.trigger_map.keys()
 	def collect(self, byte, frame, minor_frame_idx, idx, trigger, *args, **kwds):	# FIXME: Data might be zero filled, use valid list
 		#if isinstance(self.byte_offsets, list):	# Extract index if it applies to all minor frames
@@ -345,6 +347,26 @@ class BitOffset(ByteOffsetPrototype, BitParser):
 			l += [bit]
 		return l
 
+class ModeFilteredByteOffset(CustomOffset, ByteParser):
+	def __init__(self, offsets_map, default_mode=None, *args, **kwds):	# FIXME: lut
+		CustomOffset.__init__(self, [state.FrameTracker])
+		ByteParser.__init__(self, *args, **kwds)
+		self.offsets = {}
+		self.default_mode = default_mode
+		for k in offsets_map.keys():
+			self.offsets[k] = ByteOffset(offsets_map[k])
+	def _get_mode(self, *args, **kwds):
+		mode = self.default_mode
+		if 'mode' in kwds.keys() and kwds['mode'] is not None:
+			mode = kwds['mode']
+		if mode is None:
+			raise Exception("No mode given to ModeFilteredByteOffset")
+		return mode
+	def get_trigger_indices(self, *args, **kwds):
+		return self.offsets[self._get_mode(*args, **kwds)].get_trigger_indices(*args, **kwds)
+	def collect(self, *args, **kwds):
+		return self.offsets[self._get_mode(*args, **kwds)].collect(*args, **kwds)
+
 class SubcomByteOffsetPrototype(CustomOffset):
 	def __init__(self, subcom_key, offsets, byte_offsets=None, auto_complete=True, *args, **kwds):
 		CustomOffset.__init__(self, [state.SubcomTracker])
@@ -370,7 +392,7 @@ class SubcomByteOffsetPrototype(CustomOffset):
 	def is_compatible_tracker(self, c):
 		if not CustomOffset.is_compatible_tracker(self, c): return False
 		return c.can_handle_subcom(self.subcom_key)
-	def get_trigger_indices(self):
+	def get_trigger_indices(self, *args, **kwds):
 		return self.trigger_map.keys()
 	def collect(self, byte, frame, idx, trigger, *args, **kwds):	# FIXME: Data might be zero filled, use valid list
 		if trigger not in self.trigger_map.keys():	# FIXME: Use trigger.check_map (will still work for now)

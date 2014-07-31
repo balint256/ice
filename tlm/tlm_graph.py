@@ -79,6 +79,8 @@ class ElementState():
 		if res.has_key('range_out') and self.range_out is None:
 			self.range_out = res['range_out']
 			#print "%s: range (out): %s" % (self.element_id, self.range_out)
+		if res.has_key('unit'):
+			self.unit = res['unit']
 	def get_value_type(self):
 		if not isinstance(self.value_type, str) or len(self.value_type) == 0: return 'raw'
 		return self.value_type
@@ -111,7 +113,6 @@ class ElementState():
 		return (max(0, len(self.y) - self.duration), max(self.duration, len(self.y)))
 	def add_data(self, res):
 		self.data = res
-		self.unit = res['unit']
 		try:
 			v_str = self.get_value_str(unit=False)
 			v = float(v_str)

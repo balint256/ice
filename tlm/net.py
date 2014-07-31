@@ -28,27 +28,11 @@ from __future__ import with_statement
 
 import socket, threading, datetime, struct, random, time
 
+from input import *
+
 _UDP_IP = "127.0.0.1"
 _PORT = 22222
 _BUFFER_SIZE = 1024
-
-class NetworkBuffer():
-	FLAG_NONE	= 0x00
-	FLAG_DROP	= 0x01
-	FLAG_LAST	= 0x02
-	FLAG_FIRST	= 0x04
-	def __init__(self, buffer, flags=FLAG_NONE, time=None):
-		self.buffer = buffer
-		self.flags = flags
-		local_time_now = datetime.datetime.now()
-		if time is None:
-			time = local_time_now
-		self.time = time
-		self.local_time = local_time_now
-	def get_buffer(self): return self.buffer
-	def get_time(self): return self.time
-	def get_flags(self): return self.flags
-	def get_local_time(self): return self.local_time
 
 # BorIP flags (see http://wiki.spench.net/wiki/BorIP#Streaming_UDP_Protocol)
 BF_HARDWARE_OVERRUN	= 0x01
@@ -91,88 +75,6 @@ class RateCalculator():
 			return
 		self.ave_rate = 1.*total_bytes / time_diff.total_seconds()
 	def get_ave_rate(self): return self.ave_rate
-
-class PKParser():
-	HEADER = "Frame"
-	def __init__(self):
-		self.reset()
-	def reset(self):
-		self.buffers = []
-		self.line = ""
-		self.values = []
-		self.frame_line_idx = None
-		self.in_frame = False
-		self.frame_number = None
-		self.frame_time = None
-		self.found_header = False
-		self.bad_line_cnt = 0
-		self.frame_cnt = 0
-		self.last_log = ""
-	def parse(self, data):
-		self.line += str(data)
-		
-		lines = []
-		while True:
-			idx = self.line.find('\n')
-			if idx == -1:
-				break
-			part = self.line[:idx].strip()
-			lines += [part]
-			self.line = self.line[idx+1:]
-		
-		for line in lines:
-			found_header = False
-			if not self.found_header:
-				if len(line) > len(PKParser.HEADER) and line.find(PKParser.HEADER) == 0:
-					self.found_header = found_header = True
-				else:
-					continue
-			
-			if found_header:
-				self.last_log = line
-				# FIXME:
-				#self.frame_number
-				#self.frame_time
-				self.frame_line_idx = 0
-				self.values = []
-				continue
-			elif self.frame_line_idx is not None:
-				parts = line.split(" ")
-				if len(parts) != 16:
-					self.found_header = False
-					self.bad_line_cnt += 1
-					continue
-				
-				try:
-					parts = map(lambda x: int(x, 16), parts)
-				except:
-					self.found_header = False
-					self.bad_line_cnt += 1
-					continue
-				
-				self.values += parts
-				
-				self.frame_line_idx += 1
-				
-				if self.frame_line_idx == 8:
-					if len(self.values) == 128:
-						values = "".join(map(chr, self.values))
-						flags = NetworkBuffer.FLAG_NONE
-						if self.frame_cnt == 0:
-							flags |= NetworkBuffer.FLAG_FIRST
-						buffer = NetworkBuffer(values, flags=flags, time=self.frame_time)
-						self.buffers += [buffer]
-						self.frame_cnt += 1
-					else:
-						self.bad_line_cnt += 1
-					
-					self.found_header = False
-		
-		return len(self.buffers) > 0
-	def get_frames(self):
-		buffers = self.buffers
-		self.buffers = []
-		return buffers
 
 class TCPNetworkThread(threading.Thread, RateCalculator):
 	def __init__(self, network, address, timeout=0.1, sleep=1.0, *args, **kwargs):
@@ -292,7 +194,7 @@ class UDPNetworkThread(threading.Thread, RateCalculator):
 				
 				data, addr = self.network.sock.recvfrom(self.network.buffer_size)
 				
-				flags = NetworkBuffer.FLAG_NONE
+				flags = Buffer.FLAG_NONE
 				
 				if self.borip:
 					borip_header_length = 4
@@ -309,16 +211,16 @@ class UDPNetworkThread(threading.Thread, RateCalculator):
 					
 					if self.last_seq is not None:
 						if seq != ((self.last_seq + 1) % (1 << 16)):
-							flags |= NetworkBuffer.FLAG_DROP
+							flags |= Buffer.FLAG_DROP
 							self.drop_count += 1
 					self.last_seq = seq
 					
 					if flags & BF_STREAM_END:
-						flags |= NetworkBuffer.FLAG_LAST
+						flags |= Buffer.FLAG_LAST
 					
 					data = data[borip_header_length:]
 				
-				net_buffer = NetworkBuffer(data, flags)
+				net_buffer = Buffer(data, flags)
 				
 				self.stats_history += [net_buffer]
 				
@@ -332,12 +234,13 @@ class UDPNetworkThread(threading.Thread, RateCalculator):
 				self.network.exception = e
 				break
 
-class Network():
-	def __init__(self):
+class NetworkInput(Input):
+	def __init__(self, *args, **kwds):
+		Input.__init__(self, *args, **kwds)
 		self.thread = None
 		self.buffers = []
 		self.lock = threading.Lock()
-		self.last_enqueue_time = None
+		#self.last_enqueue_time = None
 		self.last_get_time = None
 		self.exception = None
 		self.last_thread_message = ""
@@ -368,25 +271,25 @@ class Network():
 			if self.last_get_time is None or self.last_enqueue_time is None:
 				return datetime.timedelta(0)
 			return self.last_get_time - self.last_enqueue_time
-	def get_status_string(self):
-		return ""
+	#def get_status_string(self):
+	#	return ""
 	def log(self, msg):
 		self.last_thread_message = msg
 
-class TCPNetwork(Network):
+class TCPNetwork(NetworkInput):
 	def __init__(self, buffer_size=_BUFFER_SIZE, timeout=0.1, *args, **kwds):
-		Network.__init__(self, *args, **kwds)
+		NetworkInput.__init__(self, *args, **kwds)
 		self.buffer_size = buffer_size
 		self.timeout = timeout
 	def start(self, address, port=_PORT, *args, **kwds):
-		Network.start(self, *args, **kwds)
+		NetworkInput.start(self, *args, **kwds)
 		self.thread = TCPNetworkThread(self, (address, port), self.timeout)
 		self.thread.setDaemon(True)
 		self.thread.start()
 	def stop(self):
 		if self.thread:
 			self.thread.disconnect(final=True)
-		Network.stop(self)
+		NetworkInput.stop(self)
 	def get_status_string(self):
 		if self.thread is None:
 			return ""
@@ -402,14 +305,14 @@ class TCPNetwork(Network):
 			status += ", " + self.last_thread_message
 		return status
 
-class UDPNetwork(Network):
+class UDPNetwork(NetworkInput):
 	def __init__(self, buffer_size=_BUFFER_SIZE, timeout=0.1, *args, **kwds):
-		Network.__init__(self, *args, **kwds)
+		NetworkInput.__init__(self, *args, **kwds)
 		self.sock = None
 		self.buffer_size = buffer_size
 		self.timeout = timeout
 	def start(self, address=_UDP_IP, port=_PORT, *args, **kwds):
-		Network.start(self, *args, **kwds)
+		NetworkInput.start(self, *args, **kwds)
 		if address is None:
 			address = _UDP_IP
 		if self.sock:
@@ -429,7 +332,7 @@ class UDPNetwork(Network):
 			#print "Closing socket..."
 			self.sock.close()	# Should cause thread to exit (doesn't)
 			self.sock = None
-		Network.stop(self)
+		NetworkInput.stop(self)
 	def get_status_string(self):
 		if self.thread is None:
 			return ""

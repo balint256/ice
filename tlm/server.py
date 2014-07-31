@@ -205,7 +205,7 @@ class Server():
 		
 		# Untrack the remaining elements (that were only registered by this client)
 		for element_state in element_states:
-			self.engine.untrack(element_state.get_element().positions().get_trigger_indices(), self)
+			self.engine.untrack(element_state.get_element().positions().get_trigger_indices(mode=self.engine.options.mode), self)
 		
 		return element_states
 	def run(self):
@@ -235,7 +235,7 @@ class Server():
 								failed_elements += [element_id]
 								continue
 							
-							trigger_indices = element_state.get_element().positions().get_trigger_indices()
+							trigger_indices = element_state.get_element().positions().get_trigger_indices(mode=self.engine.options.mode)
 							self.engine.track(trigger_indices, self)
 							
 							for trigger_index in trigger_indices:
@@ -248,6 +248,8 @@ class Server():
 								client.registration_map[trigger_index] += [element_state]
 							
 							element_info = {'id':element_id}
+							
+							element_info['unit'] = element_state.get_element().unit()
 							
 							range_info = utils.find_subclass(primitives.RangeInfo, [element_state.get_element().validator(), element_state.get_element().formatter()])
 							if range_info:
@@ -356,7 +358,6 @@ class Server():
 						state['update_count']	= element_state.update_count
 						state['value']			= element_state.last_value
 						state['value_formatted']= element.formatter().format(element_state.last_value)
-						state['unit']			= element.unit()
 						state['valid']			= element_state.last_valid
 						state['update_time']	= element_state.last_update_time
 						state['trigger']		= element_state.last_trigger
