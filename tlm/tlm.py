@@ -23,6 +23,7 @@
 #  
 
 import sys, socket, traceback, os, sys, datetime, time
+import curses	# For detecting UI update errors during callbacks
 
 from optparse import OptionParser
 
@@ -399,15 +400,20 @@ class Engine(state.EventDispatcher, state.Tracker):
 			
 			# This try/except block can be disabled for proper debugging
 			# It's mainly here as a workaround for windows that are too small and causes curses to throw an exception as the UI assumes the window is larger enough
-			#try:
-			if True:
+			try:
+			#if True:
 				self.deframer.process(data, self.accept_byte)
 				
 				if self.ui:
 					if not self.ui.run():
 						break
-			#except Exception, e:
-			#	global_log(str(e))
+			except curses.error, e:
+				if str(e) == "wmove() returned ERR":
+					global_log("Please increase your terminal's size.")
+				else:
+					global_log(str(e))
+			except Exception, e:
+				global_log("%s: %s" % (type(e), e))
 			
 			self.server.run()
 			

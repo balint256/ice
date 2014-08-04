@@ -381,6 +381,7 @@ class UserInterface():
 		self.scr = None
 		self.active_layout = None
 		self.max_y, self.max_x = 0, 0
+		self.prev_max_y, self.prev_max_x = 0, 0
 		
 		self.log_message = ""
 		self.update_log_message = False
@@ -458,8 +459,14 @@ class UserInterface():
 		self.update_log_message = True
 	def refresh_screen_state(self):
 		self.max_y, self.max_x = self.scr.getmaxyx()
+		changed = (self.max_y != self.prev_max_y) or (self.prev_max_x != self.max_x)
+		self.prev_max_y, self.prev_max_x = self.max_y, self.max_x
+		return changed
 	def update(self):
-		self.refresh_screen_state()
+		if self.refresh_screen_state():
+			self.clear()
+		
+		self.prev_max_y, self.prev_max_x
 		
 		if self.last_engine_state != self.engine.get_state():
 			self.scr.move(self.max_y-1, 0)
@@ -514,14 +521,16 @@ class UserInterface():
 		shortcuts = "".join(self.element_layout_key_shortcuts.keys())
 		self.scr.move(1, self.max_x - len(shortcuts))
 		self.scr.addstr(shortcuts)
+	def clear(self):
+		self.scr.erase()
+		self.last_engine_state = None
+		self.last_active_layout_name = ""
 	def switch_layout(self, layout, erase=True):
 		if self.active_layout:
 			self.active_layout.deactivate()
 		
 		if erase:
-			self.scr.erase()
-			self.last_engine_state = None
-			self.last_active_layout_name = ""
+			self.clear()
 		
 		self.refresh_screen_state()
 		
