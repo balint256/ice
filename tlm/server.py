@@ -308,6 +308,7 @@ class Server():
 						self.log("%s: Unregistered: %s" % (client_address, ", ".join([x.get_element().id() for x in untracked_elements])))
 					else:
 						response['error'] = "Action unrecognised: '%s'" % (msg['action'])
+						self.log("%s: Invalid action: %s" % (client_address, msg['action']))
 				except Exception, e:
 					print "While Server was handling message:", e
 					response['error'] = str(e)
