@@ -29,8 +29,10 @@ class Buffer():
 	FLAG_DROP	= 0x01
 	FLAG_LAST	= 0x02
 	FLAG_FIRST	= 0x04
-	def __init__(self, buffer, flags=FLAG_NONE, time=None):
+	FLAG_BAD	= 0x08
+	def __init__(self, buffer, flags=FLAG_NONE, time=None, original=None):
 		self.buffer = buffer
+		self.original = original
 		self.flags = flags
 		local_time_now = datetime.datetime.now()
 		if time is None:
@@ -41,6 +43,7 @@ class Buffer():
 	def get_time(self): return self.time
 	def get_flags(self): return self.flags
 	def get_local_time(self): return self.local_time
+	def get_original(self): return self.original
 
 class Input():
 	def __init__(self, *args, **kwds):
@@ -68,11 +71,13 @@ class Input():
 
 class PKParser():
 	HEADER = "Frame"
+	BAD = "(bad)"
 	def __init__(self):
 		self.reset()
 	def reset(self):
 		self.buffers = []
 		self.line = ""
+		self.original = []
 		self.values = []
 		self.frame_line_idx = None
 		self.in_frame = False
@@ -82,6 +87,7 @@ class PKParser():
 		self.bad_line_cnt = 0
 		self.frame_cnt = 0
 		self.last_log = ""
+		self.frame_good = True
 	def parse(self, data):
 		self.line += str(data)
 		
@@ -107,8 +113,10 @@ class PKParser():
 				# FIXME:
 				#self.frame_number
 				#self.frame_time
+				self.frame_good = (line.find(PKParser.BAD) == -1)
 				self.frame_line_idx = 0
 				self.values = []
+				self.original = [line]
 				continue
 			elif self.frame_line_idx is not None:
 				parts = line.split(" ")
@@ -125,6 +133,7 @@ class PKParser():
 					continue
 				
 				self.values += parts
+				self.original += [line]
 				
 				self.frame_line_idx += 1
 				
@@ -134,7 +143,9 @@ class PKParser():
 						flags = Buffer.FLAG_NONE
 						if self.frame_cnt == 0:
 							flags |= Buffer.FLAG_FIRST
-						buffer = Buffer(values, flags=flags, time=self.frame_time)
+						if not self.frame_good:
+							flags |= Buffer.FLAG_BAD
+						buffer = Buffer(values, flags=flags, time=self.frame_time, original="\n".join(self.original))
 						self.buffers += [buffer]
 						self.frame_cnt += 1
 					else:

@@ -442,9 +442,9 @@ def main():
 	parser = OptionParser(usage="%prog: [options] [TCP server[:port]]")
 	
 	parser.add_option("-L", "--load-path", type="string", default='.', help="path to load elements from [default=%default]")
-	parser.add_option("-s", "--sleep", type="float", default='0.01', help="loop sleep time (s) [default=%default]")
-	parser.add_option("-p", "--port", type="int", default='22222', help="port (UDP server or TCP client) [default=%default]")
-	parser.add_option("-P", "--server-port", type="int", default='21012', help="server port [default=%default]")
+	parser.add_option("-s", "--sleep", type="float", default=0.01, help="loop sleep time (s) [default=%default]")
+	parser.add_option("-p", "--port", type="int", default=22222, help="port (UDP server or TCP client) [default=%default]")
+	parser.add_option("-P", "--server-port", type="int", default=21012, help="server port [default=%default]")
 	parser.add_option("-S", "--always-sleep", action="store_true", default=False, help="always sleep in inner loop [default=%default]")
 	parser.add_option("-v", "--verbose", action="store_true", default=False, help="verbose logging outside of UI [default=%default]")
 	parser.add_option("-m", "--mode", type="string", default="engineering", help="select telemetry mode (%s) [default=%%default]" % (",".join(MODE_MAP.keys())))

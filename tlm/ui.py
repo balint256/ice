@@ -435,9 +435,9 @@ class UserInterface():
 		#curses.start_color()	# FIXME
 		self.scr.timeout(self.timeout)	# -1 for blocking
 		self.scr.keypad(1)	# Otherwise app will end when pressing arrow keys
+		curses.noecho()
 		
 		#curses.raw()
-		#curses.noecho()
 		#curses.cbreak()
 		#curses.nl / curses.nonl
 		#self.scr.deleteln()

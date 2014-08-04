@@ -52,10 +52,10 @@ class RateCalculator():
 	def reset(self):
 		self.stats_history = []
 		self.ave_rate = 0.0
-	def calculate_statistics(self, time=None):
-		if time is None:
-			time = datetime.datetime.now()
-		time_last = time - datetime.timedelta(seconds=self.averaging_period)
+	def calculate_statistics(self, time_now=None):
+		if time_now is None:
+			time_now = datetime.datetime.now()
+		time_last = time_now - datetime.timedelta(seconds=self.averaging_period)
 		cnt = 0
 		for buf in self.stats_history:
 			if buf.get_local_time() > time_last:
@@ -75,6 +75,7 @@ class RateCalculator():
 			return
 		self.ave_rate = 1.*total_bytes / time_diff.total_seconds()
 	def get_ave_rate(self): return self.ave_rate
+	def get_stats_history(self): return self.stats_history
 
 class TCPNetworkThread(threading.Thread, RateCalculator):
 	def __init__(self, network, address, timeout=0.1, sleep=1.0, *args, **kwargs):
