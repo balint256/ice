@@ -307,10 +307,10 @@ class Server():
 						
 						self.log("%s: Unregistered: %s" % (client_address, ", ".join([x.get_element().id() for x in untracked_elements])))
 					else:
-						res['error'] = "Action unrecognised: '%s'" % (msg['action'])
+						response['error'] = "Action unrecognised: '%s'" % (msg['action'])
 				except Exception, e:
 					print "While Server was handling message:", e
-					res['error'] = str(e)
+					response['error'] = str(e)
 					raise
 				
 				client.post(response)
